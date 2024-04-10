@@ -8,8 +8,40 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.autograd import Variable
 
-from vgg import vgg
+
 import shutil
+
+# my model definition:
+class MyModel(nn.Module):
+    def __init__(self):
+        super(MyModel, self).__init__()
+        self.conv1 = nn.Conv2d(3, 32, 3, padding=1)
+        self.conv2 = nn.Conv2d(32, 32, 3)
+        self.conv3 = nn.Conv2d(32, 64, 3, padding=1)
+        self.conv4 = nn.Conv2d(64, 64, 3)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.dropout = nn.Dropout(0.25)
+        self.fc1 = nn.Linear(64 * 6 * 6, 512)
+        self.fc2 = nn.Linear(512, 5)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = self.pool(x)
+        x = self.dropout(x)
+        x = F.relu(self.conv3(x))
+        x = F.relu(self.conv4(x))
+        x = self.pool(x)
+        x = self.dropout(x)
+        x = x.view(-1, 64 * 6 * 6)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
+        return F.softmax(x, dim=1)
+
+# Create an instance of the model
+model = MyModel()
+
 
 # Training settings
 parser = argparse.ArgumentParser(description='PyTorch Slimming CIFAR training')
@@ -71,11 +103,11 @@ test_loader = torch.utils.data.DataLoader(
 
 if args.refine:
     checkpoint = torch.load(args.refine)
-    model = vgg(cfg=checkpoint['cfg'])
+    model = MyModel()
     model.cuda()
     model.load_state_dict(checkpoint['state_dict'])
 else:
-    model = vgg()
+    model = MyModel()
 if args.cuda:
     model.cuda()
 
